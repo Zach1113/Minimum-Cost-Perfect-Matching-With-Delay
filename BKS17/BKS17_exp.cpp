@@ -258,7 +258,7 @@ void outputRequestAsFile(RequestGenerator RG){
 int main()
 {   
     int min_location = 0, max_location = 100;
-    int number_of_requests = 3000; //has to be an even number
+    int number_of_requests = 1000; //has to be an even number
 
     // generate all requests
     RequestGenerator RG;
