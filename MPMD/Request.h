@@ -24,7 +24,7 @@ public :
     bool matched = false;
 
     // algorithm parameters
-    double alpha = 2;
+    double alpha = 0.5;
     double beta = 2;
     
     // a priority queue that stores the future matching time from this request to other requests
