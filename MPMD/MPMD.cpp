@@ -1,5 +1,5 @@
-// compile:g++ -O3 Example.cpp BinaryHeap.cpp Matching.cpp Graph.cpp Request.cpp RequestGenerator.cpp -o example
-// ./example -f requestFile.txt --minweight
+// g++ -O3 MPMD.cpp BinaryHeap.cpp Matching.cpp Graph.cpp Request.cpp RequestGenerator.cpp -o mpmd
+// ./mpmd
 
 #include "Matching.h"
 #include "Request.h"
@@ -11,71 +11,49 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include <queue>
-#include <cmath>
-#include <cfloat>
-#include <random>
-#include <utility> 
-#include <functional>
 using namespace std;
 
 vector<Request> RQ;
 
-pair< Graph, vector<double> > CreateRandomGraph()
-{
-	//random seed
-	int x;
-	cin >> x;
-	srand( x );
+int nChoosek(int n, int k){
 
-	//Please see Graph.h for a description of the interface
-	int n = 50;
-
-	Graph G(n);
-	vector<double> cost;
-	for(int i = 0; i < n; i++)
-		for(int j = i+1; j < n; j++)
-			if(rand()%10 == 0)
-			{
-				G.AddEdge(i, j);
-				cost.push_back(rand()%1000);
-			}
-
-	return make_pair(G, cost);
+    if (k > n) return 0;
+    if (k * 2 > n) /*return*/ k = n-k;  //remove the commented section
+    if (k == 0) return 1;
+ 
+    int result = n;
+    for(int i = 2; i <= k; ++i) {
+        result *= (n - i + 1);
+        result /= i;
+    }
+    return result;
 }
 
-Graph ReadGraph(string filename)
-{
-	//Please see Graph.h for a description of the interface
+void outputRequestAsFile(RequestGenerator RG, string filename){
+    
+    vector<Request> RQ;
+    int number_of_requests = RG.number_of_requests;
+    int k = 2; // c(n, 2)
 
-	ifstream file;
-	file.open(filename.c_str());
+    for(int i = 0; i < number_of_requests; ++i){
+        auto tmp = RG.throw_next_request(); //tmp: <atime, location>
+        Request new_request(tmp.first, tmp.second, i);
+        RQ.push_back(new_request);    
+    }
 
-	string s;
-	getline(file, s);
-	stringstream ss(s);
-	int n;
-	ss >> n;
-	getline(file, s);
-	ss.str(s);
-	ss.clear();
-	int m;
-	ss >> m;
-
-	Graph G(n);
-	for(int i = 0; i < m; i++)
-	{
-		getline(file, s);
-		ss.str(s);
-		ss.clear();
-		int u, v;
-		ss >> u >> v;
-
-		G.AddEdge(u, v);
-	}
-
-	file.close();
-	return G;
+    ofstream requestFile(filename);
+    
+    // Write text to the file
+    requestFile << number_of_requests << endl;
+    requestFile << nChoosek(number_of_requests, k) << endl;
+    
+    for(int i = 0; i < number_of_requests - 1; ++i){
+        for(int j = i + 1; j < number_of_requests; ++j){
+            int cost = abs(RQ[i].location - RQ[j].location) + (RQ[j].atime - RQ[i].atime);
+            requestFile << i << " " << j << " " << cost << endl;
+        }
+    }
+    requestFile.close();
 }
 
 pair< Graph, vector<double> > ReadWeightedGraph(string filename)
@@ -122,7 +100,6 @@ void MinimumCostPerfectMatchingExample(string filename)
 	
 	//Read the graph
 	pair< Graph, vector<double> > p = ReadWeightedGraph(filename);
-	//pair< Graph, vector<double> > p = CreateRandomGraph();
 	G = p.first;
 	cost = p.second;
 
@@ -148,43 +125,10 @@ void MinimumCostPerfectMatchingExample(string filename)
 	cout << "Wait Cost: " << obj - totalDistCost << endl;
 }
 
-void MaximumMatchingExample(string filename)
-{
-	Graph G = ReadGraph(filename);
-	Matching M(G);
-
-	list<int> matching;
-	matching = M.SolveMaximumMatching();
-
-	cout << "Number of edges in the maximum matching: " << matching.size() << endl;
-	cout << "Edges in the matching:" << endl;
-	for(list<int>::iterator it = matching.begin(); it != matching.end(); it++)
-	{
-		pair<int, int> e = G.GetEdge( *it );
-
-		cout << e.first << " " << e.second << endl;
-	}
-}
-
-int nChoosek(int n, int k){
-
-    if (k > n) return 0;
-    if (k * 2 > n) /*return*/ k = n-k;  //remove the commented section
-    if (k == 0) return 1;
- 
-    int result = n;
-    for(int i = 2; i <= k; ++i) {
-        result *= (n - i + 1);
-        result /= i;
-    }
-    return result;
-}
-
 class MPMD{
 
 public :
 
-    //vector<Request> RQ;
     bool request_event = true;
     int request_ID = 0;
     double totalCost = 0;
@@ -246,41 +190,12 @@ public :
                 totalDistCost += distCost;
                 totalWaitCost += waitCost;
             }
-            //cout << "------------------------------------" << endl;
         }
         cout << "Alg Cost: " << totalCost << endl;
         cout << "Dist Cost: " << totalDistCost << endl;
         cout << "Wait Cost: " << totalWaitCost << endl << endl;
     }
 };
-
-void outputRequestAsFile(RequestGenerator RG){
-    
-    vector<Request> RQ;
-    int number_of_requests = RG.number_of_requests;
-    int k = 2; // c(n, 2)
-
-    for(int i = 0; i < number_of_requests; ++i){
-        auto tmp = RG.throw_next_request(); //tmp: <atime, location>
-        Request new_request(tmp.first, tmp.second, i);
-        RQ.push_back(new_request);    
-    }
-
-    ofstream requestFile("requestFile.txt");
-    
-    // Write text to the file
-    requestFile << number_of_requests << endl;
-    requestFile << nChoosek(number_of_requests, k) << endl;
-    
-    for(int i = 0; i < number_of_requests - 1; ++i){
-        for(int j = i + 1; j < number_of_requests; ++j){
-            int cost = abs(RQ[i].location - RQ[j].location) + (RQ[j].atime - RQ[i].atime);
-            requestFile << i << " " << j << " " << cost << endl;
-        }
-    }
-    requestFile.close();
-    //cout << "Text written to file successfully." << endl << endl;;
-}
 
 int main(int argc, char* argv[])
 {
@@ -291,55 +206,27 @@ int main(int argc, char* argv[])
     RequestGenerator RG;
 	//RG.generateGreedy();
     RG.generateRandom(min_location, max_location, number_of_requests);
-	outputRequestAsFile(RG);
+	outputRequestAsFile(RG, "requestFile.txt");
 
     MPMD alg;
     alg.execute(RG);
 
-	string filename = "";
-	string algorithm = "";
+	string filename = "requestFile.txt";
 
 	int i = 1;
 	while(i < argc)
 	{
 		string a(argv[i]);
-		if(a == "-f")
-			filename = argv[++i];
-		else if(a == "--minweight")
-			algorithm = "minweight";
-		else if(a == "--max")
-			algorithm = "max";
 		i++;
 	}
 
-	if(filename == "" || algorithm == "")
-	{
-		cout << "usage: ./example -f <filename> <--minweight | --max>" << endl;
-		cout << "--minweight for minimum weight perfect matching" << endl;
-		cout << "--max for maximum cardinality matching" << endl;
-		cout << "file format:" << endl;
-		cout << "the first two lines give n (number of vertices) and m (number of edges)," << endl;
-		cout << "followed by m lines, each with a tuple (u, v [, c]) representing the edges," << endl;
-	   	cout << "where u and v are the endpoints (0-based indexing) of the edge and c is its cost" << endl;	
-		cout << "the cost is optional if --max is specified" << endl;
-		return 1;
+	try{
+		MinimumCostPerfectMatchingExample(filename);
 	}
-
-	try
-	{
-		if(algorithm == "minweight")
-			MinimumCostPerfectMatchingExample(filename);
-		else
-			MaximumMatchingExample(filename);
-	}
-	catch(const char * msg)
-	{
+	catch(const char * msg){
 		cout << msg << endl;
 		return 1;
 	}
 
 	return 0;
 }
-
-
-
