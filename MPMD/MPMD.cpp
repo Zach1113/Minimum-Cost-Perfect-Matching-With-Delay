@@ -2,10 +2,10 @@
 // ./mpmd
 
 #include "Matching.h"
+#include "Graph.h"
 #include "Request.h"
 #include "RequestGenerator.h"
 #include <fstream>
-#include "Graph.h"
 #include <cstdlib>
 #include <iostream>
 #include <string>
