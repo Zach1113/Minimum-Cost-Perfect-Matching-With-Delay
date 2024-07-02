@@ -213,20 +213,7 @@ int main(int argc, char* argv[])
 
 	string filename = "requestFile.txt";
 
-	int i = 1;
-	while(i < argc)
-	{
-		string a(argv[i]);
-		i++;
-	}
-
-	try{
-		MinimumCostPerfectMatchingExample(filename);
-	}
-	catch(const char * msg){
-		cout << msg << endl;
-		return 1;
-	}
-
+	MinimumCostPerfectMatchingExample(filename);
+    
 	return 0;
 }
