@@ -53,7 +53,8 @@ public:
         double obj = solution.second;
         double totalDistCost = 0;
 
-        cout << "Opt Cost: " << obj << endl;
+        cout << "OPT" << endl;
+        cout << "Cost: " << obj << endl;
 
         for(list<int>::iterator it = matching.begin(); it != matching.end(); it++)
         {
@@ -66,7 +67,7 @@ public:
     }
 
     pair< Graph, vector<double> > ReadWeightedGraph(vector<Request> Q){
-        //Please see Graph.h for a description of the interface
+
         int n = Q.size(); // vertices
         int m = nChoosek(n, 2); // edges
         
@@ -132,7 +133,7 @@ public :
                 //offlineQ.push_back(new_request);
                 // tell every already existed requests that a new request has arrived
                 for(int k = 0; k < RQ.size(); ++k){
-                    RQ[k].new_request_arrive(new_request);
+                    RQ[k].new_request_arrive_BKS17(new_request);
                 }
                 request_ID++;
             }
@@ -154,6 +155,80 @@ public :
             }
         }
         cout << "BKS17" << endl;
+        cout << "Cost: " << totalCost << endl;
+        cout << "Dist Cost: " << totalDistCost << endl;
+        cout << "Wait Cost: " << totalWaitCost << endl << endl;
+    }
+};
+
+class AJF20{
+
+public :
+
+    vector<Request> RQ;
+
+    bool request_event = true;
+    int request_ID = 0;
+    double totalCost = 0;
+    double totalDistCost = 0;
+    double totalWaitCost = 0;
+    double time = 0;
+
+    //constructor
+    AJF20(){}
+
+    // execute algorithm
+    void execute(RequestGenerator RG){
+        
+        int matched_requests = 0;
+        while(matched_requests != RG.number_of_requests){
+
+            int matchID, targetID;
+
+            request_event = true;
+            double next_event_time = RG.get_next_request_atime();
+
+            //compare next arrival time with closest matching event, set boolean value
+            for(int k = 0; k < RQ.size(); ++k){
+                double next_matching_time = RQ[k].get_min_matching_time(RQ);
+                if(next_matching_time < next_event_time){
+                    request_event = false;
+                    next_event_time = next_matching_time;
+                    matchID = k;
+                }
+            }
+
+            time = next_event_time;
+            
+            // request comes first
+            if(request_event){
+                auto tmp = RG.throw_next_request(); //tmp: <atime, location>
+                Request new_request(tmp.first, tmp.second, request_ID);
+                RQ.push_back(new_request);
+                // tell every already existed requests that a new request has arrived
+                for(int k = 0; k < RQ.size(); ++k){
+                    RQ[k].new_request_arrive_AJF20(new_request);
+                }
+                request_ID++;
+            }
+
+            // next matching happens first
+            else{
+                int targetID = RQ[matchID].get_match_targetID();
+                RQ[matchID].matched = true;
+                RQ[targetID].matched = true;
+
+                double distCost = abs(RQ[matchID].location - RQ[targetID].location);
+                double waitCost = (time - RQ[matchID].atime) + (time - RQ[targetID].atime);
+                double edgeCost = distCost + waitCost;
+                matched_requests += 2;
+                
+                totalCost += edgeCost; 
+                totalDistCost += distCost;
+                totalWaitCost += waitCost;
+            }
+        }
+        cout << "AJF20" << endl;
         cout << "Cost: " << totalCost << endl;
         cout << "Dist Cost: " << totalDistCost << endl;
         cout << "Wait Cost: " << totalWaitCost << endl << endl;
@@ -184,7 +259,6 @@ public :
 
     pair< Graph, vector<double> > ReadWeightedGraph(vector<Request> Q)
     {
-        //Please see Graph.h for a description of the interface
         tmp.clear();
         int n = 0; // vertices
         for(int i = 0; i < Q.size(); ++i){
@@ -193,7 +267,7 @@ public :
                 tmp.push_back(i);
             }
         }
-        //cout << n << " requests left" << endl;
+
         int m = nChoosek(n, 2); // edges
         
         Graph G(n);
@@ -203,7 +277,6 @@ public :
                 double c = abs(Q[tmp[u]].location - Q[tmp[v]].location) + (Q[tmp[v]].atime - Q[tmp[u]].atime);
                 G.AddEdge(u, v);
                 cost[G.GetEdgeIndex(u, v)] = c;
-                //cout << "Add edge:" << tmp[u] << " and " << tmp[v] << endl;
             }
         }
 
@@ -212,7 +285,6 @@ public :
 
     void MinimumCostPerfectMatching(vector<Request> Q)
     {
-        //cout << "Rematch" << endl;
         Graph G;
         vector<double> cost;
         
@@ -235,7 +307,6 @@ public :
             int r1 = tmp[e.first], r2 = tmp[e.second];
             double matching_time = (abs(Q[r1].location - Q[r2].location) + 2 * (Q[r1].atime + Q[r2].atime)) / 4;
             pq.push(make_pair(matching_time, make_pair(r1, r2)));
-            //cout << "(" << r1 << ", " << r2 << ") ";
         }
     }
 
@@ -250,7 +321,6 @@ public :
             //compare next arrival time with closest matching event, set boolean value
             if(!pq.empty()){
                 double next_matching_time = pq.top().first;
-                //cout << "next matching time: " << next_matching_time << endl;
                 if(next_matching_time < next_event_time){
                     request_event = false;
                     next_event_time = next_matching_time;
@@ -318,7 +388,7 @@ public :
 int main()
 {
 	int min_location = 0, max_location = 100;
-    int number_of_requests = 300; //has to be an even number
+    int number_of_requests = 1000; //has to be an even number
 
     // generate all requests
     RequestGenerator RG;
@@ -332,8 +402,11 @@ int main()
     BKS17 alg2;
     alg2.execute(RG);
 
-	OPT alg3;
-    alg3.execute();
+    AJF20 alg3;
+    alg3.execute(RG);
+
+	OPT alg4;
+    alg4.execute();
     
 	return 0;
 }

@@ -37,7 +37,9 @@ public :
 
     // BKS17
     // calculate the future matching time between this request and new arrived request
-    void new_request_arrive(const Request &r);
+    void new_request_arrive_BKS17(const Request &r);
+
+    void new_request_arrive_AJF20(const Request &r);
 
     double get_min_matching_time(const vector<Request> &RQ);
 
