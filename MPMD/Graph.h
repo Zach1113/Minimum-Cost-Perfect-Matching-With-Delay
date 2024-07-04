@@ -2,6 +2,7 @@
 
 #include <list>
 #include <vector>
+#include <iostream>
 using namespace std;
 
 class Graph

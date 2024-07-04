@@ -518,7 +518,7 @@ pair< list<int>, double> Matching::SolveMinimumCostPerfectMatching(const vector<
 {
 	SolveMaximumMatching();
 	if(!perfect)
-		throw "Error: The graph does not have a perfect matching";
+		cout << "Error: The graph does not have a perfect matching" << endl;
 
 	Clear();
 

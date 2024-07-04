@@ -3,7 +3,7 @@
 Request::Request(double arrive_time, int loc, int id)
     : atime(arrive_time), location(loc), ID(id) {}
 
-    // calculate the future matching time between this request and new arrived request
+// calculate the future matching time between this request and new arrived request
 void Request::new_request_arrive(const Request &r){
     if (r.ID == ID) return;
     double budget_sufficiency_time = (abs(r.location - location) + (r.atime + atime) * alpha) / (2 * alpha);
@@ -12,6 +12,7 @@ void Request::new_request_arrive(const Request &r){
     pq.push(make_pair(matching_time, r.ID));
 }
 
+// BKS17
 double Request::get_min_matching_time(const vector<Request> &RQ){
     while(!pq.empty() && RQ[pq.top().second].matched){
         pq.pop();

@@ -1,4 +1,4 @@
-// g++ -O3 MPMD.cpp BinaryHeap.cpp Matching.cpp Graph.cpp Request.cpp RequestGenerator.cpp -o mpmd
+// g++ -O3 BKS17_readfile_version.cpp BinaryHeap.cpp Matching.cpp Graph.cpp Request.cpp RequestGenerator.cpp -o mpmd
 // ./mpmd
 
 #include "Matching.h"
@@ -204,8 +204,8 @@ int main(int argc, char* argv[])
 
     // generate all requests
     RequestGenerator RG;
-	RG.generateGreedy();
-    //RG.generateRandom(min_location, max_location, number_of_requests);
+	//RG.generateGreedy();
+    RG.generateRandom(min_location, max_location, number_of_requests);
 	outputRequestAsFile(RG, "requestFile.txt");
 
     MPMD alg;

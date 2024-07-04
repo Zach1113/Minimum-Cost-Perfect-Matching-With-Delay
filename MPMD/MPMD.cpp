@@ -13,7 +13,6 @@
 #include <vector>
 using namespace std;
 
-vector<Request> RQ;
 vector<Request> offlineQ;
 
 int nChoosek(int n, int k){
@@ -30,63 +29,67 @@ int nChoosek(int n, int k){
     return result;
 }
 
-pair< Graph, vector<double> > ReadWeightedGraph(vector<Request> Q)
-{
-	//Please see Graph.h for a description of the interface
-	int n = 0; // vertices
-    for(int i = 0; i < Q.size(); ++i){
-        if(!Q[i].matched) ++n;
-    }
-    int m = nChoosek(n, 2); // edges
-    
-    Graph G(n);
-	vector<double> cost(m);
-    for(int u = 0; u < Q.size() - 1; ++u){
-        for(int v = u + 1; v < Q.size(); ++v){
-            int c = abs(Q[u].location - Q[v].location) + (Q[v].atime - Q[u].atime);
-            G.AddEdge(u, v);
-		    cost[G.GetEdgeIndex(u, v)] = c;
+class OPT{
+
+public: 
+
+    void execute(){
+
+        Graph G;
+        vector<double> cost;
+        
+        //Read the graph
+        pair< Graph, vector<double> > p = ReadWeightedGraph(offlineQ);
+        G = p.first;
+        cost = p.second;
+
+        //Create a Matching instance passing the graph
+        Matching M(G);
+
+        //Pass the costs to solve the problem
+        pair< list<int>, double > solution = M.SolveMinimumCostPerfectMatching(cost);
+
+        list<int> matching = solution.first;
+        double obj = solution.second;
+        double totalDistCost = 0;
+
+        cout << "Opt Cost: " << obj << endl;
+
+        for(list<int>::iterator it = matching.begin(); it != matching.end(); it++)
+        {
+            pair<int, int> e = G.GetEdge(*it);
+            int r1 = e.first, r2 = e.second;
+            totalDistCost += abs(offlineQ[r1].location - offlineQ[r2].location);
         }
+        cout << "Dist Cost: " << totalDistCost << endl; 
+        cout << "Wait Cost: " << obj - totalDistCost << endl;
     }
 
-	return make_pair(G, cost);
-}
+    pair< Graph, vector<double> > ReadWeightedGraph(vector<Request> Q){
+        //Please see Graph.h for a description of the interface
+        int n = Q.size(); // vertices
+        int m = nChoosek(n, 2); // edges
+        
+        Graph G(n);
+        vector<double> cost(m);
+        for(int u = 0; u < n - 1; ++u){
+            for(int v = u + 1; v < n; ++v){
+                double c = abs(Q[u].location - Q[v].location) + (Q[v].atime - Q[u].atime);
+                G.AddEdge(u, v);
+                cost[G.GetEdgeIndex(u, v)] = c;
+            }
+        }
 
-void MinimumCostPerfectMatchingExample(vector<Request> Q)
-{
-	Graph G;
-	vector<double> cost;
-	
-	//Read the graph
-	pair< Graph, vector<double> > p = ReadWeightedGraph(Q);
-	G = p.first;
-    cost = p.second;
+        return make_pair(G, cost);
+    }
 
-	//Create a Matching instance passing the graph
-	Matching M(G);
-
-	//Pass the costs to solve the problem
-	pair< list<int>, double > solution = M.SolveMinimumCostPerfectMatching(cost);
-
-	list<int> matching = solution.first;
-	double obj = solution.second;
-	double totalDistCost = 0;
-
-	cout << "Opt Cost: " << obj << endl;
-
-	for(list<int>::iterator it = matching.begin(); it != matching.end(); it++)
-	{
-		pair<int, int> e = G.GetEdge(*it);
-		int r1 = e.first, r2 = e.second;
-		totalDistCost += abs(Q[r1].location - Q[r2].location);
-	}
-	cout << "Dist Cost: " << totalDistCost << endl; 
-	cout << "Wait Cost: " << obj - totalDistCost << endl;
-}
+};
 
 class BKS17{
 
 public :
+
+    vector<Request> RQ;
 
     bool request_event = true;
     int request_ID = 0;
@@ -99,7 +102,7 @@ public :
     BKS17(){}
 
     // execute algorithm
-    void execute(RequestGenerator &RG){
+    void execute(RequestGenerator RG){
         
         int matched_requests = 0;
         while(matched_requests != RG.number_of_requests){
@@ -126,7 +129,7 @@ public :
                 auto tmp = RG.throw_next_request(); //tmp: <atime, location>
                 Request new_request(tmp.first, tmp.second, request_ID);
                 RQ.push_back(new_request);
-                offlineQ.push_back(new_request);
+                //offlineQ.push_back(new_request);
                 // tell every already existed requests that a new request has arrived
                 for(int k = 0; k < RQ.size(); ++k){
                     RQ[k].new_request_arrive(new_request);
@@ -150,7 +153,8 @@ public :
                 totalWaitCost += waitCost;
             }
         }
-        cout << "Alg Cost: " << totalCost << endl;
+        cout << "BKS17" << endl;
+        cout << "Cost: " << totalCost << endl;
         cout << "Dist Cost: " << totalDistCost << endl;
         cout << "Wait Cost: " << totalWaitCost << endl << endl;
     }
@@ -160,6 +164,11 @@ class MPMD{
 
 public :
 
+    vector<Request> RQ;
+   
+    vector<int> tmp;
+    priority_queue<pair<double, pair<int, int>>, vector<pair<double, pair<int, int>>>, greater<pair<double, pair<int, int>>>> pq;
+
     bool request_event = true;
     int request_ID = 0;
     double totalCost = 0;
@@ -167,27 +176,84 @@ public :
     double totalWaitCost = 0;
     double time = 0;
 
+    int matched_requests = 0;
+    int matchID, targetID;
+
     //constructor
     MPMD(){}
 
-    // execute algorithm
-    void execute(RequestGenerator &RG){
+    pair< Graph, vector<double> > ReadWeightedGraph(vector<Request> Q)
+    {
+        //Please see Graph.h for a description of the interface
+        tmp.clear();
+        int n = 0; // vertices
+        for(int i = 0; i < Q.size(); ++i){
+            if(!Q[i].matched){
+                ++n;
+                tmp.push_back(i);
+            }
+        }
+        //cout << n << " requests left" << endl;
+        int m = nChoosek(n, 2); // edges
         
-        int matched_requests = 0;
-        while(matched_requests != RG.number_of_requests){
+        Graph G(n);
+        vector<double> cost(m);
+        for(int u = 0; u < tmp.size() - 1; ++u){
+            for(int v = u + 1; v < tmp.size(); ++v){
+                double c = abs(Q[tmp[u]].location - Q[tmp[v]].location) + (Q[tmp[v]].atime - Q[tmp[u]].atime);
+                G.AddEdge(u, v);
+                cost[G.GetEdgeIndex(u, v)] = c;
+                //cout << "Add edge:" << tmp[u] << " and " << tmp[v] << endl;
+            }
+        }
 
-            int matchID, targetID;
+        return make_pair(G, cost);
+    }
+
+    void MinimumCostPerfectMatching(vector<Request> Q)
+    {
+        //cout << "Rematch" << endl;
+        Graph G;
+        vector<double> cost;
+        
+        //Read the graph
+        pair< Graph, vector<double> > p = ReadWeightedGraph(Q);
+        G = p.first;
+        cost = p.second;
+
+        //Create a Matching instance passing the graph
+        Matching M(G);
+
+        //Pass the costs to solve the problem
+        pair< list<int>, double > solution = M.SolveMinimumCostPerfectMatching(cost);
+
+        list<int> matching = solution.first;
+
+        for(list<int>::iterator it = matching.begin(); it != matching.end(); it++)
+        {
+            pair<int, int> e = G.GetEdge(*it);
+            int r1 = tmp[e.first], r2 = tmp[e.second];
+            double matching_time = (abs(Q[r1].location - Q[r2].location) + 2 * (Q[r1].atime + Q[r2].atime)) / 4;
+            pq.push(make_pair(matching_time, make_pair(r1, r2)));
+            //cout << "(" << r1 << ", " << r2 << ") ";
+        }
+    }
+
+    // execute algorithm
+    void execute(RequestGenerator RG){
+
+        while(matched_requests != RG.number_of_requests){         
 
             request_event = true;
             double next_event_time = RG.get_next_request_atime();
 
             //compare next arrival time with closest matching event, set boolean value
-            for(int k = 0; k < RQ.size(); ++k){
-                double next_matching_time = RQ[k].get_min_matching_time(RQ);
+            if(!pq.empty()){
+                double next_matching_time = pq.top().first;
+                //cout << "next matching time: " << next_matching_time << endl;
                 if(next_matching_time < next_event_time){
                     request_event = false;
                     next_event_time = next_matching_time;
-                    matchID = k;
                 }
             }
 
@@ -195,59 +261,79 @@ public :
             
             // request comes first
             if(request_event){
+                
                 auto tmp = RG.throw_next_request(); //tmp: <atime, location>
                 Request new_request(tmp.first, tmp.second, request_ID);
+                //cout << "Request event: " << request_ID << endl;
                 RQ.push_back(new_request);
                 offlineQ.push_back(new_request);
-                // tell every already existed requests that a new request has arrived
-                for(int k = 0; k < RQ.size(); ++k)
-                    RQ[k].new_request_arrive(new_request);
 
                 // Do offline alg if even request arrives
-                /*if(request_ID % 2 == 0){ 
-                    // outputRequestAsFile
+                if(request_ID % 2 == 1){
+                    
+                    // clear pq before executing offline
+                    while (!pq.empty()) pq.pop();
+                    MinimumCostPerfectMatching(RQ);
+                    
                     // Need to check if the new matching result causes any immediate matching
-                
-                }*/
+                    while(!pq.empty() && pq.top().first <= time){
+                       match();
+                    }
+                }
                 request_ID++;
             }
 
             // next matching happens first
-            else{
-                int targetID = RQ[matchID].get_match_targetID();
-                RQ[matchID].matched = true;
-                RQ[targetID].matched = true;
-
-                double distCost = abs(RQ[matchID].location - RQ[targetID].location);
-                double waitCost = (time - RQ[matchID].atime) + (time - RQ[targetID].atime);
-                double edgeCost = distCost + waitCost;
-                matched_requests += 2;
-                
-                totalCost += edgeCost;
-                totalDistCost += distCost;
-                totalWaitCost += waitCost;
+            else {
+                match();
             }
         }
-        cout << "Alg Cost: " << totalCost << endl;
+        cout << "MPMD" << endl;
+        cout << "Cost: " << totalCost << endl;
         cout << "Dist Cost: " << totalDistCost << endl;
         cout << "Wait Cost: " << totalWaitCost << endl << endl;
     }
+
+    void match(){
+        
+        matchID = pq.top().second.first;
+        targetID = pq.top().second.second;
+        pq.pop();
+        
+        RQ[matchID].matched = true;
+        RQ[targetID].matched = true;
+        //cout << "match " << matchID << " and " << targetID << endl;
+
+        double distCost = abs(RQ[matchID].location - RQ[targetID].location);
+        double waitCost = (time - RQ[matchID].atime) + (time - RQ[targetID].atime);
+        double edgeCost = distCost + waitCost;
+        matched_requests += 2;
+        
+        totalCost += edgeCost;
+        totalDistCost += distCost;
+        totalWaitCost += waitCost;
+    }
 };
 
-int main(int argc, char* argv[])
+int main()
 {
 	int min_location = 0, max_location = 100;
-    int number_of_requests = 10; //has to be an even number
+    int number_of_requests = 300; //has to be an even number
 
     // generate all requests
     RequestGenerator RG;
-	RG.generateGreedy();
-    //RG.generateRandom(min_location, max_location, number_of_requests);
+	//RG.generateGreedy();
+    //RG.generateCustomized();
+    RG.generateRandom(min_location, max_location, number_of_requests);
 
-    BKS17 alg;
-    alg.execute(RG);
+    MPMD alg1;
+    alg1.execute(RG);
 
-	MinimumCostPerfectMatchingExample(offlineQ);
+    BKS17 alg2;
+    alg2.execute(RG);
+
+	OPT alg3;
+    alg3.execute();
     
 	return 0;
 }

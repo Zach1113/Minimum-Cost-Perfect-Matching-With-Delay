@@ -4,6 +4,7 @@
 #include "BinaryHeap.h"
 #include <list>
 #include <vector>
+#include <iostream>
 using namespace std;
 
 #define EVEN 2

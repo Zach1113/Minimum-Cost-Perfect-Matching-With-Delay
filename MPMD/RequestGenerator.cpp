@@ -12,7 +12,7 @@ void RequestGenerator::generateRandom(int min_loc, int max_loc, int num_of_req){
     random_device rd;
     mt19937 gen(rd());
 
-    double lambda = 100;
+    double lambda = 1;
     exponential_distribution<> exp_dis(lambda);
     uniform_int_distribution<> uni_dis(min_location, max_location);
 

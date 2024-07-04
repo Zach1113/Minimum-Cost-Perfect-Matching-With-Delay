@@ -23,10 +23,11 @@ public :
     // request is matched or not
     bool matched = false;
 
-    // algorithm parameters
+    // BKS17 parameters
     double alpha = 0.5;
     double beta = 2;
     
+    // BKS17
     // a priority queue that stores the future matching time from this request to other requests
     // pq<matching time, targetID> 
     priority_queue<pair<double, int>, vector<pair<double, int>>, greater<pair<double, int>>> pq;
@@ -34,6 +35,7 @@ public :
     // Constructor
     Request(double arrive_time, int loc, int id);
 
+    // BKS17
     // calculate the future matching time between this request and new arrived request
     void new_request_arrive(const Request &r);
 
